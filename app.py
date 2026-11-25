@@ -393,9 +393,13 @@ def consultar():
         })
 
 
+
 if __name__ == "__main__":
+    carregar_bases()
+
     app.run(
         host="0.0.0.0",
         port=8054,
-        debug=True
+        debug=True,
+        use_reloader=False
     )
