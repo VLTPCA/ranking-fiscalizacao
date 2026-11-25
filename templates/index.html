@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consulta do Ranking - Fiscalização</title>
+
+    <style>
+      :root {
+        --roxo: #5E22F3;
+        --roxo-escuro: #34108F;
+        --texto: #120B2A;
+        --cinza: #667085;
+        --fundo: #F6F7FF;
+        --borda: #D9DDEE;
+        --ok: #087F5B;
+        --ok-bg: #E9FFF2;
+        --erro: #B42318;
+        --erro-bg: #FFF1F0;
+        --alerta: #B7791F;
+        --alerta-bg: #FFF7E6;
+        --branco: #FFFFFF;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--texto);
+        background: linear-gradient(135deg, #F7F7FF 0%, #EFF1FF 100%);
+        min-height: 100vh;
+      }
+
+      header {
+        background: #fff;
+        border-bottom: 1px solid var(--borda);
+        padding: 30px 20px;
+      }
+
+      .wrap {
+        width: min(920px, calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .brand {
+        color: var(--roxo);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 8px 0 8px;
+        font-size: clamp(28px, 4vw, 42px);
+        line-height: 1.08;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--cinza);
+        max-width: 760px;
+        line-height: 1.55;
+      }
+
+      main {
+        padding: 28px 0 50px;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid var(--borda);
+        border-radius: 18px;
+        box-shadow: 0 16px 40px rgba(31, 23, 79, .08);
+        padding: 24px;
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 24px;
+      }
+
+      p {
+        line-height: 1.55;
+      }
+
+      .muted {
+        color: var(--cinza);
+        font-size: 14px;
+      }
+
+      label {
+        display: block;
+        font-weight: 800;
+        margin: 16px 0 8px;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        border: 1px solid var(--borda);
+        border-radius: 14px;
+        padding: 14px 16px;
+        font-size: 17px;
+        background: #fff;
+        outline: none;
+      }
+
+      input[type="text"]:focus {
+        border-color: var(--roxo);
+        box-shadow: 0 0 0 4px rgba(94, 34, 243, .12);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 13px 18px;
+        font-weight: 800;
+        cursor: pointer;
+        font-size: 15px;
+        transition: .15s ease;
+      }
+
+      .primary {
+        background: var(--roxo);
+        color: #fff;
+      }
+
+      .primary:hover {
+        background: var(--roxo-escuro);
+      }
+
+      .secondary {
+        background: #EEE9FF;
+        color: var(--roxo-escuro);
+      }
+
+      .secondary:hover {
+        background: #E3DBFF;
+      }
+
+      .status {
+        margin-top: 16px;
+        border-radius: 12px;
+        padding: 13px 15px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .status.ok {
+        display: block;
+        color: var(--ok);
+        background: var(--ok-bg);
+        border: 1px solid #97F0B4;
+      }
+
+      .status.err {
+        display: block;
+        color: var(--erro);
+        background: var(--erro-bg);
+        border: 1px solid #FFB4AB;
+      }
+
+      .status.warn {
+        display: block;
+        color: var(--alerta);
+        background: var(--alerta-bg);
+        border: 1px solid #FFD58A;
+      }
+
+      .result {
+        margin-top: 18px;
+        display: none;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #ECFDF3;
+        color: #06603B;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .hero {
+        margin-top: 16px;
+        background: linear-gradient(135deg, #F1EEFF 0%, #FFFFFF 100%);
+        border: 1px solid var(--borda);
+        border-radius: 18px;
+        padding: 24px;
+      }
+
+      .nome {
+        font-size: 24px;
+        font-weight: 800;
+        margin: 0 0 18px;
+      }
+
+      .ranking-box {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        margin-top: 12px;
+      }
+
+      .metric {
+        border: 1px solid var(--borda);
+        background: #fff;
+        border-radius: 16px;
+        padding: 18px;
+        min-height: 112px;
+      }
+
+      .metric span {
+        display: block;
+        color: #5E667A;
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+      }
+
+      .metric strong {
+        display: block;
+        color: var(--roxo);
+        font-size: 38px;
+        margin-top: 8px;
+        line-height: 1;
+        word-break: break-word;
+      }
+
+      .metric small {
+        display: block;
+        color: var(--texto);
+        font-size: 20px;
+        font-weight: 800;
+        margin-top: 10px;
+        line-height: 1.25;
+      }
+
+      .details {
+        margin-top: 16px;
+        border-top: 1px solid var(--borda);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid #EEF0F6;
+      }
+
+      .row b {
+        color: #5E667A;
+      }
+
+      footer {
+        color: #667085;
+        text-align: center;
+        font-size: 12px;
+        padding: 0 0 24px;
+      }
+
+      @media (max-width:680px) {
+        .ranking-box {
+          grid-template-columns: 1fr;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+
+        .card {
+          padding: 18px;
+        }
+
+        button {
+          width: 100%;
+        }
+      }
+
+      @media print {
+
+        header,
+        .actions,
+        label,
+        input,
+        .subtitle,
+        footer,
+        #status {
+          display: none !important;
+        }
+
+        body {
+          background: #fff;
+        }
+
+        main {
+          padding: 0;
+        }
+
+        .wrap {
+          width: 100%;
+        }
+
+        .card {
+          border: 0;
+          box-shadow: none;
+        }
+
+        .result {
+          display: block !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <header>
+      <div class="wrap">
+        <div class="brand">Motiva</div>
+        <h1>Consulta do Ranking da Fiscalização</h1>
+        <p class="subtitle">
+          Informe sua Matrícula GM para consultar sua posição individual no ranking do mês de referência.
+        </p>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap">
+        <section class="card">
+          <h2>Consultar por Matrícula GM</h2>
+
+          <p class="muted">
+            Digite a Matrícula GM exatamente como consta no cadastro.
+            A consulta retorna apenas o registro correspondente à matrícula informada.
+          </p>
+
+          <label for="matricula">Matrícula GM</label>
+
+          <input id="matricula" type="text" inputmode="numeric" autocomplete="off" placeholder="Ex.: 6462820" />
+
+          <div class="actions">
+            <button class="primary" type="button" onclick="consultar()">
+              Consultar meu resultado
+            </button>
+
+            <button class="secondary" type="button" onclick="limparConsulta()">
+              Limpar
+            </button>
+
+            <button class="secondary" type="button" onclick="imprimirResultado()">
+              Imprimir resultado
+            </button>
+          </div>
+
+          <div id="status" class="status"></div>
+
+          <div id="resultado" class="result">
+            <span class="pill">Resultado encontrado</span>
+
+            <div class="hero">
+              <p class="nome" id="resNome">-</p>
+
+              <div class="ranking-box">
+                <div class="metric">
+                  <span>Posição no ranking</span>
+                  <strong id="resPosicao">-</strong>
+                </div>
+
+                <div class="metric">
+                  <span>Notificações</span>
+                  <strong id="resNotificacoes">-</strong>
+                </div>
+
+                <div class="metric">
+                  <span>Fiscalizações</span>
+                  <strong id="resFiscalizacoes">-</strong>
+                </div>
+
+                <div class="metric">
+                  <span>Mês de referência</span>
+                  <small id="resMes">-</small>
+                </div>
+              </div>
+
+              <div class="details">
+                <div class="row">
+                  <b>Matrícula GM</b>
+                  <span id="resMatricula">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      Ranking Fiscalização - consulta individual
+    </footer>
+
+    <script>
+      function setStatus(mensagem, tipo) {
+        const status = document.getElementById("status");
+
+        status.textContent = mensagem;
+        status.className = "status " + tipo;
+        status.style.display = "block";
+      }
+
+      function limparStatus() {
+        const status = document.getElementById("status");
+
+        status.textContent = "";
+        status.className = "status";
+        status.style.display = "none";
+      }
+
+      function esconderResultado() {
+        document.getElementById("resultado").style.display = "none";
+      }
+
+      function mostrarResultado() {
+        document.getElementById("resultado").style.display = "block";
+      }
+
+      async function consultar() {
+        const campoMatricula = document.getElementById("matricula");
+        const matricula = campoMatricula.value.trim();
+
+        limparStatus();
+        esconderResultado();
+
+        if (!matricula) {
+          setStatus("Informe a Matrícula GM.", "warn");
+          campoMatricula.focus();
+          return;
+        }
+
+        try {
+          setStatus("Consultando resultado...", "warn");
+
+          const resposta = await fetch(`/consultar?matricula=${encodeURIComponent(matricula)}`, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json"
+            }
+          });
+
+          if (!resposta.ok) {
+            setStatus("Erro ao acessar o servidor da consulta.", "err");
+            return;
+          }
+
+          const dados = await resposta.json();
+
+          if (dados.erro) {
+            setStatus(dados.erro, "err");
+            esconderResultado();
+            return;
+          }
+
+          document.getElementById("resNome").textContent = dados.nome || "-";
+          document.getElementById("resPosicao").textContent = dados.posicao || "-";
+          document.getElementById("resNotificacoes").textContent = dados.notificacoes || "-";
+          document.getElementById("resFiscalizacoes").textContent = dados.fiscalizacoes || "-";
+          document.getElementById("resMes").textContent = dados.mes || "-";
+          document.getElementById("resMatricula").textContent = dados.matricula || matricula;
+
+          setStatus("Resultado encontrado.", "ok");
+          mostrarResultado();
+
+        } catch (erro) {
+          console.error("Erro na consulta:", erro);
+
+          setStatus(
+            "Erro ao consultar o ranking. Verifique se o servidor Flask está rodando.",
+            "err"
+          );
+
+          esconderResultado();
+        }
+      }
+
+      function limparConsulta() {
+        document.getElementById("matricula").value = "";
+
+        document.getElementById("resNome").textContent = "-";
+        document.getElementById("resPosicao").textContent = "-";
+        document.getElementById("resNotificacoes").textContent = "-";
+        document.getElementById("resFiscalizacoes").textContent = "-";
+        document.getElementById("resMes").textContent = "-";
+        document.getElementById("resMatricula").textContent = "-";
+
+        limparStatus();
+        esconderResultado();
+
+        document.getElementById("matricula").focus();
+      }
+
+      function imprimirResultado() {
+        const resultado = document.getElementById("resultado");
+
+        if (resultado.style.display !== "block") {
+          setStatus("Consulte uma matrícula antes de imprimir.", "warn");
+          return;
+        }
+
+        window.print();
+      }
+
+      document.getElementById("matricula").addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+          consultar();
+        }
+      });
+    </script>
+
+  </body>
+</html>

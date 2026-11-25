@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ranking Fiscalização - Consulta com Duas Bases</title>
+<style>
+:root{--roxo:#5E22F3;--roxo2:#34108F;--texto:#120B2A;--cinza:#667085;--fundo:#F6F7FF;--borda:#D9DDEE;--ok:#087F5B;--erro:#B42318;--alerta:#B7791F;--branco:#fff}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--texto);background:linear-gradient(135deg,#F7F7FF 0%,#EFF1FF 100%);min-height:100vh}.wrap{width:min(1080px,calc(100% - 32px));margin:0 auto}header{background:#fff;border-bottom:1px solid var(--borda);padding:28px 20px}.brand{color:var(--roxo);font-weight:800;font-size:13px;letter-spacing:.08em;text-transform:uppercase}h1{font-size:clamp(28px,4vw,42px);line-height:1.08;margin:8px 0}.subtitle{color:var(--cinza);max-width:850px;line-height:1.55;margin:0}main{padding:28px 0 50px}.grid{display:grid;grid-template-columns:.95fr 1.25fr;gap:20px;align-items:start}.card{background:#fff;border:1px solid var(--borda);border-radius:18px;box-shadow:0 16px 40px rgba(31,23,79,.08);padding:22px}h2{margin:0 0 14px;font-size:22px}h3{margin:18px 0 8px;font-size:16px}p,li{line-height:1.55}.muted{color:var(--cinza);font-size:14px}label{display:block;font-weight:800;margin:14px 0 8px}input[type=file],input[type=text]{width:100%;border:1px solid var(--borda);border-radius:12px;padding:12px 14px;font-size:15px;background:#fff;outline:none}input[type=text]:focus{border-color:var(--roxo);box-shadow:0 0 0 4px rgba(94,34,243,.12)}button{border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer;background:var(--roxo);color:#fff}button.secondary{background:#EEF0FF;color:var(--roxo2);border:1px solid #D9DDEE}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.pill{display:inline-flex;align-items:center;border-radius:999px;padding:7px 10px;font-size:13px;font-weight:800;margin:6px 6px 0 0}.ok{background:#E9FFF2;color:var(--ok);border:1px solid #B6F2CD}.warn{background:#FFF7E6;color:var(--alerta);border:1px solid #FFE0A3}.err{background:#FFF1F0;color:var(--erro);border:1px solid #FFCCC7}.result{margin-top:20px;border:1px solid var(--borda);border-radius:18px;padding:20px;background:#FBFCFF;display:none}.bigpos{font-size:clamp(42px,7vw,72px);font-weight:900;color:var(--roxo);line-height:1;margin:8px 0}.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}.item{border:1px solid var(--borda);border-radius:14px;background:#fff;padding:14px}.item span{display:block;color:var(--cinza);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.item b{display:block;font-size:18px;margin-top:4px}.note{border-left:4px solid var(--roxo);background:#F4F1FF;border-radius:12px;padding:12px 14px;margin:14px 0}.errorBox{border-left:4px solid var(--erro);background:#FFF1F0;border-radius:12px;padding:12px 14px;margin-top:14px;display:none}.successBox{border-left:4px solid var(--ok);background:#E9FFF2;border-radius:12px;padding:12px 14px;margin-top:14px;display:none}details{margin-top:14px}.small{font-size:13px}.footer{margin-top:18px;color:var(--cinza);font-size:12px}@media(max-width:860px){.grid{grid-template-columns:1fr}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><div class="brand">Motiva | Fiscalização</div><h1>Consulta Individual do Ranking</h1><p class="subtitle">Carregue as duas bases CSV e consulte o resultado individual pela Matrícula GM. A posição exibida é a posição que já vem pronta na base extraída do BI.</p></div></header>
+<main class="wrap">
+  <section class="grid">
+    <div class="card">
+      <h2>1. Atualização das bases</h2>
+      <p class="muted">Use esta área para carregar a base mensal do ranking e a base de efetivo. Depois de salvar, os dados ficam gravados neste navegador.</p>
+      <label for="rankingFile">Base do ranking CSV</label>
+      <input type="file" id="rankingFile" accept=".csv,text/csv" />
+      <p class="muted small">Colunas esperadas: Nome, Posição, Notificações, Fiscalizações, Mês Referência.</p>
+      <label for="efetivoFile">Base de efetivo CSV</label>
+      <input type="file" id="efetivoFile" accept=".csv,text/csv" />
+      <p class="muted small">Colunas esperadas: Matrícula GM, Nome.</p>
+      <div class="actions"><button onclick="carregarArquivos()">Carregar bases</button><button class="secondary" onclick="limparBases()">Limpar bases salvas</button></div>
+      <div id="status" style="margin-top:14px"></div>
+      <details><summary class="muted">Formato recomendado dos arquivos</summary><p class="small"><b>ranking.csv</b></p><pre class="small">Nome,Posição,Notificações,Fiscalizações,Mês Referência
+ADRIANA MARTINS VITORIO,1,23,8080,Outubro/2026</pre><p class="small"><b>efetivo.csv</b></p><pre class="small">Matrícula GM,Nome
+6462832,ADRIANA MARTINS VITORIO</pre></details>
+    </div>
+    <div class="card">
+      <h2>2. Consulta do fiscal</h2>
+      <p class="muted">Informe a Matrícula GM para consultar somente o resultado correspondente.</p>
+      <label for="matricula">Matrícula GM</label>
+      <input type="text" id="matricula" placeholder="Ex.: 6462832" onkeydown="if(event.key==='Enter') consultar()" />
+      <div class="actions"><button onclick="consultar()">Consultar meu resultado</button><button class="secondary" onclick="window.print()">Imprimir</button></div>
+      <div id="erro" class="errorBox"></div>
+      <div id="sucesso" class="successBox"></div>
+      <div id="resultado" class="result">
+        <div class="muted">Resultado encontrado</div>
+        <h3 id="nomeFiscal" style="font-size:26px;margin:8px 0 4px"></h3>
+        <div class="bigpos" id="posicaoFiscal"></div>
+        <div class="muted" id="mesRef"></div>
+        <div class="kv">
+          <div class="item"><span>Matrícula GM</span><b id="matriculaFiscal"></b></div>
+          <div class="item"><span>Nome na base de ranking</span><b id="nomeRanking"></b></div>
+          <div class="item"><span>Notificações</span><b id="notificacoes"></b></div>
+          <div class="item"><span>Fiscalizações</span><b id="fiscalizacoes"></b></div>
+        </div>
+      </div>
+      <p class="footer">Esta página não recalcula o ranking. Ela apenas cruza Matrícula GM com Nome e exibe a posição já informada pelo BI.</p>
+    </div>
+  </section>
+</main>
+<script>
+let ranking=[], efetivo=[];
+const KEY_RANKING='rankingFiscalizacaoCSV';
+const KEY_EFETIVO='efetivoFiscalizacaoCSV';
+function norm(s){return String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ç/g,'c').replace(/Ç/g,'C').replace(/\s+/g,' ').trim().toUpperCase()}
+function onlyDigits(s){return String(s??'').replace(/\D/g,'')}
+function detectarSep(linha){const virg=(linha.match(/,/g)||[]).length; const ponto=(linha.match(/;/g)||[]).length; return ponto>virg?';':','}
+function parseCSV(texto){texto=texto.replace(/^\uFEFF/,'').replace(/\r/g,''); const linhas=texto.split('\n').filter(l=>l.trim()!==''); if(!linhas.length)return[]; const sep=detectarSep(linhas[0]); const rows=[]; for(const linha of linhas){let arr=[],cur='',q=false; for(let i=0;i<linha.length;i++){const ch=linha[i]; if(ch==='"'){ if(q&&linha[i+1]==='"'){cur+='"';i++} else q=!q } else if(ch===sep&&!q){arr.push(cur.trim());cur=''} else cur+=ch} arr.push(cur.trim()); rows.push(arr)} const headers=rows.shift().map(h=>norm(h)); return rows.map(r=>{const o={}; headers.forEach((h,i)=>o[h]=r[i]??''); return o})}
+function campo(obj, nomes){for(const n of nomes){const k=norm(n); if(Object.prototype.hasOwnProperty.call(obj,k))return obj[k]} return ''}
+function lerArquivo(file){return new Promise((res,rej)=>{const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsText(file,'UTF-8')})}
+function setStatus(){const s=document.getElementById('status'); const r=ranking.length, e=efetivo.length; s.innerHTML=`<span class="pill ${r?'ok':'warn'}">Ranking: ${r} registro(s)</span><span class="pill ${e?'ok':'warn'}">Efetivo: ${e} registro(s)</span>`}
+async function carregarArquivos(){try{const rf=document.getElementById('rankingFile').files[0]; const ef=document.getElementById('efetivoFile').files[0]; if(!rf||!ef){alert('Selecione os dois arquivos CSV: ranking e efetivo.');return} const rt=await lerArquivo(rf); const et=await lerArquivo(ef); ranking=parseCSV(rt); efetivo=parseCSV(et); localStorage.setItem(KEY_RANKING,rt); localStorage.setItem(KEY_EFETIVO,et); setStatus(); msg('sucesso','Bases carregadas e salvas neste navegador.');}catch(e){msg('erro','Não foi possível carregar as bases. Verifique se os arquivos estão em CSV.')}}
+function limparBases(){localStorage.removeItem(KEY_RANKING);localStorage.removeItem(KEY_EFETIVO);ranking=[];efetivo=[];setStatus();msg('sucesso','Bases removidas deste navegador.')}
+function carregarSalvo(){const r=localStorage.getItem(KEY_RANKING); const e=localStorage.getItem(KEY_EFETIVO); if(r)ranking=parseCSV(r); if(e)efetivo=parseCSV(e); setStatus()}
+async function tentarAutoCarregar(){try{if(!ranking.length){const r=await fetch('ranking.csv',{cache:'no-store'}); if(r.ok){const t=await r.text(); ranking=parseCSV(t); localStorage.setItem(KEY_RANKING,t)}} if(!efetivo.length){const e=await fetch('efetivo.csv',{cache:'no-store'}); if(e.ok){const t=await e.text(); efetivo=parseCSV(t); localStorage.setItem(KEY_EFETIVO,t)}} setStatus()}catch(e){setStatus()}}
+function msg(tipo,texto){document.getElementById('erro').style.display='none';document.getElementById('sucesso').style.display='none'; const el=document.getElementById(tipo); el.textContent=texto; el.style.display='block'}
+function consultar(){document.getElementById('resultado').style.display='none';document.getElementById('erro').style.display='none';document.getElementById('sucesso').style.display='none'; if(!ranking.length||!efetivo.length){msg('erro','As duas bases precisam estar carregadas antes da consulta.');return} const mat=onlyDigits(document.getElementById('matricula').value); if(!mat){msg('erro','Informe a Matrícula GM.');return} const cad=efetivo.find(x=>onlyDigits(campo(x,['Matrícula GM','Matricula GM','Matricula','Matrícula']))===mat); if(!cad){msg('erro','Matrícula GM não encontrada na base de efetivo.');return} const nomeEfetivo=campo(cad,['Nome','Nome completo','Fiscal']); const alvo=norm(nomeEfetivo); const rank=ranking.find(x=>norm(campo(x,['Nome','Fiscal','Nome do Fiscal']))===alvo); if(!rank){msg('erro','Fiscal encontrado no efetivo, mas sem registro na base de ranking deste período.');return} const pos=campo(rank,['Posição','Posicao','Ranking','Classificação','Classificacao']); const mes=campo(rank,['Mês Referência','Mes Referencia','Mês','Mes','Referência','Referencia']); document.getElementById('nomeFiscal').textContent=nomeEfetivo; document.getElementById('posicaoFiscal').textContent=pos?`${pos}º lugar`:'Posição não informada'; document.getElementById('mesRef').textContent=mes?`Mês de referência: ${mes}`:'Mês de referência não informado'; document.getElementById('matriculaFiscal').textContent=mat; document.getElementById('nomeRanking').textContent=campo(rank,['Nome','Fiscal','Nome do Fiscal']); document.getElementById('notificacoes').textContent=campo(rank,['Notificações','Notificacoes'])||'-'; document.getElementById('fiscalizacoes').textContent=campo(rank,['Fiscalizações','Fiscalizacoes','Ficalizaçoes','Ficalizacoes'])||'-'; document.getElementById('resultado').style.display='block'}
+carregarSalvo(); tentarAutoCarregar();
+</script>
+</body>
+</html>
