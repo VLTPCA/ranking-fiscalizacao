@@ -2,18 +2,44 @@ from flask import Flask, render_template, request, jsonify
 import pandas as pd
 from pathlib import Path
 import unicodedata
+import os
 
 app = Flask(__name__)
 
-# Caminho da pasta onde estão app.py, data.csv, efetivo.csv e templates/
-BASE_DIR = Path(r"N:\Fiscalizacao CCO\Coordenacao da Fiscalizacao\23 NOTIFICAÇÕES AFI\Ranking_HTML")
+# ============================================================
+# CONFIGURAÇÃO DE CAMINHO PARA O RENDER
+# ============================================================
+# No Render, o caminho N:\ não existe.
+# Por isso usamos a pasta onde este app.py está salvo.
+#
+# Estrutura esperada no Render/GitHub:
+#
+# projeto/
+# ├── app.py
+# ├── data.csv
+# ├── efetivo.csv
+# ├── requirements.txt
+# └── templates/
+#     └── index.html
+#
+# Se futuramente você usar Persistent Disk no Render,
+# pode configurar uma variável de ambiente DATA_DIR.
+# Exemplo:
+# DATA_DIR=/var/data
 
-ARQUIVO_RANKING = BASE_DIR / "data.csv"
-ARQUIVO_EFETIVO = BASE_DIR / "efetivo.csv"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR)).resolve()
+
+ARQUIVO_RANKING = DATA_DIR / "data.csv"
+ARQUIVO_EFETIVO = DATA_DIR / "efetivo.csv"
 
 ranking = None
 efetivo = None
 
+
+# ============================================================
+# FUNÇÕES DE NORMALIZAÇÃO
+# ============================================================
 
 def normalizar_texto(valor):
     """
@@ -46,6 +72,7 @@ def normalizar_coluna(coluna):
     coluna = coluna.replace(" ", "_")
     coluna = coluna.replace("-", "_")
     coluna = coluna.replace("/", "_")
+    coluna = coluna.replace(".", "_")
     return coluna
 
 
@@ -112,47 +139,52 @@ def formatar_mes_referencia(valor):
     return valor
 
 
+# ============================================================
+# FUNÇÕES DE LEITURA E PADRONIZAÇÃO DOS CSVs
+# ============================================================
+
 def ler_csv(caminho):
     """
-    Lê CSV tentando primeiro ponto e vírgula e depois vírgula.
-    Também trata UTF-8 e Latin1.
+    Lê CSV tentando:
+    - UTF-8 com ;
+    - UTF-8 com ,
+    - Latin1 com ;
+    - Latin1 com ,
+
+    Isso ajuda tanto no arquivo exportado pelo BI quanto em arquivos salvos pelo Excel.
     """
-    try:
-        df = pd.read_csv(
-            caminho,
-            sep=";",
-            dtype=str,
-            encoding="utf-8-sig"
-        ).fillna("")
+    if not caminho.exists():
+        raise FileNotFoundError(f"Arquivo não encontrado: {caminho}")
 
-        # Se veio só uma coluna, provavelmente o separador está errado
-        if len(df.columns) == 1:
+    tentativas = [
+        {"sep": ";", "encoding": "utf-8-sig"},
+        {"sep": ",", "encoding": "utf-8-sig"},
+        {"sep": ";", "encoding": "latin1"},
+        {"sep": ",", "encoding": "latin1"},
+    ]
+
+    ultimo_erro = None
+
+    for tentativa in tentativas:
+        try:
             df = pd.read_csv(
                 caminho,
-                sep=",",
+                sep=tentativa["sep"],
                 dtype=str,
-                encoding="utf-8-sig"
+                encoding=tentativa["encoding"]
             ).fillna("")
 
-    except UnicodeDecodeError:
-        df = pd.read_csv(
-            caminho,
-            sep=";",
-            dtype=str,
-            encoding="latin1"
-        ).fillna("")
+            # Se vier apenas uma coluna, provavelmente o separador está errado.
+            if len(df.columns) > 1:
+                df.columns = df.columns.astype(str).str.strip()
+                return df
 
-        if len(df.columns) == 1:
-            df = pd.read_csv(
-                caminho,
-                sep=",",
-                dtype=str,
-                encoding="latin1"
-            ).fillna("")
+            ultimo_erro = f"CSV lido com apenas uma coluna usando {tentativa}"
 
-    df.columns = df.columns.astype(str).str.strip()
+        except Exception as erro:
+            ultimo_erro = erro
 
-    return df
+    raise Exception(f"Não foi possível ler o arquivo {caminho}. Erro: {ultimo_erro}")
 
 
 def padronizar_colunas(df):
@@ -182,18 +214,30 @@ def obter_coluna(mapa_colunas, possibilidades):
     return None
 
 
+# ============================================================
+# CARREGAMENTO DAS BASES
+# ============================================================
+
 def carregar_bases():
     global ranking, efetivo
 
-    print("Pasta base:", BASE_DIR)
+    print("==============================================")
+    print("Carregando bases...")
+    print("BASE_DIR:", BASE_DIR)
+    print("DATA_DIR:", DATA_DIR)
     print("Arquivo ranking:", ARQUIVO_RANKING)
     print("Arquivo efetivo:", ARQUIVO_EFETIVO)
+    print("==============================================")
 
     if not ARQUIVO_RANKING.exists():
-        raise FileNotFoundError(f"Arquivo não encontrado: {ARQUIVO_RANKING}")
+        raise FileNotFoundError(
+            f"Arquivo data.csv não encontrado em: {ARQUIVO_RANKING}"
+        )
 
     if not ARQUIVO_EFETIVO.exists():
-        raise FileNotFoundError(f"Arquivo não encontrado: {ARQUIVO_EFETIVO}")
+        raise FileNotFoundError(
+            f"Arquivo efetivo.csv não encontrado em: {ARQUIVO_EFETIVO}"
+        )
 
     ranking = ler_csv(ARQUIVO_RANKING)
     efetivo = ler_csv(ARQUIVO_EFETIVO)
@@ -338,16 +382,74 @@ def carregar_bases():
     print(f"Efetivo: {len(efetivo)} registros")
     print("Colunas ranking padronizadas:", list(ranking.columns))
     print("Colunas efetivo padronizadas:", list(efetivo.columns))
+    print("==============================================")
 
+
+def garantir_bases_carregadas():
+    """
+    No Render, quando a aplicação roda com gunicorn app:app,
+    o bloco if __name__ == '__main__' não é executado.
+    Por isso esta função garante que as bases sejam carregadas
+    antes de qualquer consulta.
+    """
+    global ranking, efetivo
+
+    if ranking is None or efetivo is None:
+        print("Bases ainda não carregadas. Carregando agora...")
+        carregar_bases()
+
+
+# ============================================================
+# ROTAS
+# ============================================================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
+@app.route("/health")
+def health():
+    """
+    Rota simples para testar se a aplicação está online no Render.
+    """
+    return jsonify({
+        "status": "online",
+        "base_dir": str(BASE_DIR),
+        "data_dir": str(DATA_DIR),
+        "ranking_existe": ARQUIVO_RANKING.exists(),
+        "efetivo_existe": ARQUIVO_EFETIVO.exists()
+    })
+
+
+@app.route("/recarregar-bases")
+def recarregar_bases():
+    """
+    Rota simples para recarregar os CSVs sem reiniciar o serviço.
+    Atenção: em produção, o ideal é proteger esta rota com senha/login.
+    """
+    try:
+        carregar_bases()
+
+        return jsonify({
+            "status": "ok",
+            "mensagem": "Bases recarregadas com sucesso.",
+            "ranking": len(ranking),
+            "efetivo": len(efetivo)
+        })
+
+    except Exception as erro:
+        return jsonify({
+            "status": "erro",
+            "erro": str(erro)
+        }), 500
+
+
 @app.route("/consultar")
 def consultar():
     try:
+        garantir_bases_carregadas()
+
         matricula = request.args.get("matricula", "")
         matricula = normalizar_matricula(matricula)
 
@@ -388,18 +490,30 @@ def consultar():
         })
 
     except Exception as erro:
+        print("Erro na consulta:", erro)
+
         return jsonify({
             "erro": str(erro)
-        })
+        }), 500
 
 
+# ============================================================
+# EXECUÇÃO LOCAL
+# ============================================================
+# No Render, normalmente o app será iniciado com:
+# gunicorn app:app
+#
+# Este bloco abaixo serve para rodar localmente com:
+# python app.py
 
 if __name__ == "__main__":
     carregar_bases()
 
+    porta = int(os.environ.get("PORT", 8054))
+
     app.run(
         host="0.0.0.0",
-        port=8054,
+        port=porta,
         debug=True,
         use_reloader=False
     )
