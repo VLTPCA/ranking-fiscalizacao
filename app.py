@@ -3,16 +3,20 @@ import pandas as pd
 from pathlib import Path
 import unicodedata
 import os
+from datetime import datetime
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
+
 
 app = Flask(__name__)
 
 # ============================================================
-# CONFIGURAÇÃO DE CAMINHO PARA O RENDER
+# CONFIGURAÇÃO PARA RENDER
 # ============================================================
-# No Render, o caminho N:\ não existe.
-# Por isso usamos a pasta onde este app.py está salvo.
-#
-# Estrutura esperada no Render/GitHub:
+# Estrutura esperada:
 #
 # projeto/
 # ├── app.py
@@ -22,10 +26,8 @@ app = Flask(__name__)
 # └── templates/
 #     └── index.html
 #
-# Se futuramente você usar Persistent Disk no Render,
-# pode configurar uma variável de ambiente DATA_DIR.
-# Exemplo:
-# DATA_DIR=/var/data
+# No Render, não use caminho N:\.
+# Os arquivos CSV precisam estar junto do projeto ou em DATA_DIR.
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR)).resolve()
@@ -42,10 +44,6 @@ efetivo = None
 # ============================================================
 
 def normalizar_texto(valor):
-    """
-    Remove acentos, espaços duplicados e padroniza em maiúsculas.
-    Usado para comparar nomes e colunas.
-    """
     valor = str(valor).strip()
     valor = " ".join(valor.split())
     valor = unicodedata.normalize("NFD", valor)
@@ -54,20 +52,10 @@ def normalizar_texto(valor):
 
 
 def normalizar_matricula(valor):
-    """
-    Mantém apenas números da matrícula.
-    Evita erro se vier com espaço, ponto, traço etc.
-    """
     return "".join(c for c in str(valor) if c.isdigit())
 
 
 def normalizar_coluna(coluna):
-    """
-    Normaliza nomes de colunas.
-    Exemplo:
-    'Mês Referência' -> 'MES_REFERENCIA'
-    'AnoMes' -> 'ANOMES'
-    """
     coluna = normalizar_texto(coluna)
     coluna = coluna.replace(" ", "_")
     coluna = coluna.replace("-", "_")
@@ -77,14 +65,6 @@ def normalizar_coluna(coluna):
 
 
 def formatar_mes_referencia(valor):
-    """
-    Converte valores como:
-    2026-11 -> Novembro de 2026
-    202611  -> Novembro de 2026
-    11/2026 -> Novembro de 2026
-
-    Se já vier escrito, retorna o valor original.
-    """
     valor = str(valor).strip()
 
     if not valor:
@@ -105,7 +85,7 @@ def formatar_mes_referencia(valor):
         "12": "Dezembro"
     }
 
-    # Caso venha como 2026-11 ou 2026-11-01
+    # Formato: 2026-11 ou 2026-11-01
     if "-" in valor:
         partes = valor.split("-")
 
@@ -116,7 +96,7 @@ def formatar_mes_referencia(valor):
             if ano.isdigit() and mes in meses:
                 return f"{meses[mes]} de {ano}"
 
-    # Caso venha como 202611
+    # Formato: 202611
     if len(valor) == 6 and valor.isdigit():
         ano = valor[:4]
         mes = valor[4:6]
@@ -124,7 +104,7 @@ def formatar_mes_referencia(valor):
         if mes in meses:
             return f"{meses[mes]} de {ano}"
 
-    # Caso venha como 11/2026
+    # Formato: 11/2026
     if "/" in valor:
         partes = valor.split("/")
 
@@ -135,24 +115,36 @@ def formatar_mes_referencia(valor):
             if ano.isdigit() and mes in meses:
                 return f"{meses[mes]} de {ano}"
 
-    # Caso já venha como "Novembro de 2026"
     return valor
 
 
+def obter_ultima_atualizacao_base():
+    """
+    Retorna a data/hora da última modificação do data.csv.
+    Essa data será exibida no HTML como a última atualização da base.
+    """
+    try:
+        if not ARQUIVO_RANKING.exists():
+            return ""
+
+        timestamp = ARQUIVO_RANKING.stat().st_mtime
+
+        if ZoneInfo:
+            data_hora = datetime.fromtimestamp(timestamp, ZoneInfo("America/Sao_Paulo"))
+        else:
+            data_hora = datetime.fromtimestamp(timestamp)
+
+        return data_hora.strftime("%d/%m/%Y às %H:%M")
+
+    except Exception:
+        return ""
+
+
 # ============================================================
-# FUNÇÕES DE LEITURA E PADRONIZAÇÃO DOS CSVs
+# LEITURA DOS CSVs
 # ============================================================
 
 def ler_csv(caminho):
-    """
-    Lê CSV tentando:
-    - UTF-8 com ;
-    - UTF-8 com ,
-    - Latin1 com ;
-    - Latin1 com ,
-
-    Isso ajuda tanto no arquivo exportado pelo BI quanto em arquivos salvos pelo Excel.
-    """
     if not caminho.exists():
         raise FileNotFoundError(f"Arquivo não encontrado: {caminho}")
 
@@ -174,7 +166,6 @@ def ler_csv(caminho):
                 encoding=tentativa["encoding"]
             ).fillna("")
 
-            # Se vier apenas uma coluna, provavelmente o separador está errado.
             if len(df.columns) > 1:
                 df.columns = df.columns.astype(str).str.strip()
                 return df
@@ -188,10 +179,6 @@ def ler_csv(caminho):
 
 
 def padronizar_colunas(df):
-    """
-    Cria um mapa de colunas normalizadas para encontrar colunas
-    mesmo com acento, sem acento, maiúsculas, minúsculas etc.
-    """
     mapa = {}
 
     for coluna in df.columns:
@@ -202,9 +189,6 @@ def padronizar_colunas(df):
 
 
 def obter_coluna(mapa_colunas, possibilidades):
-    """
-    Encontra a coluna real do CSV a partir de possíveis nomes.
-    """
     for nome in possibilidades:
         chave = normalizar_coluna(nome)
 
@@ -227,6 +211,7 @@ def carregar_bases():
     print("DATA_DIR:", DATA_DIR)
     print("Arquivo ranking:", ARQUIVO_RANKING)
     print("Arquivo efetivo:", ARQUIVO_EFETIVO)
+    print("Última atualização data.csv:", obter_ultima_atualizacao_base())
     print("==============================================")
 
     if not ARQUIVO_RANKING.exists():
@@ -328,15 +313,6 @@ def carregar_bases():
             f"Colunas encontradas: {list(ranking.columns)}"
         )
 
-    if not col_notificacoes:
-        print("Atenção: coluna de notificações não encontrada no data.csv.")
-
-    if not col_fiscalizacoes:
-        print("Atenção: coluna de fiscalizações não encontrada no data.csv.")
-
-    if not col_mes:
-        print("Atenção: coluna de mês referência não encontrada no data.csv.")
-
     if not col_nome_efetivo:
         raise Exception(
             "Não encontrei a coluna de nome no arquivo efetivo.csv. "
@@ -349,7 +325,15 @@ def carregar_bases():
             f"Colunas encontradas: {list(efetivo.columns)}"
         )
 
-    # Renomeia colunas principais do ranking para um padrão interno
+    if not col_notificacoes:
+        print("Atenção: coluna de notificações não encontrada no data.csv.")
+
+    if not col_fiscalizacoes:
+        print("Atenção: coluna de fiscalizações não encontrada no data.csv.")
+
+    if not col_mes:
+        print("Atenção: coluna de mês referência não encontrada no data.csv.")
+
     renomear_ranking = {
         col_nome_ranking: "Nome",
         col_posicao: "Posição"
@@ -366,13 +350,11 @@ def carregar_bases():
 
     ranking.rename(columns=renomear_ranking, inplace=True)
 
-    # Renomeia colunas principais do efetivo para um padrão interno
     efetivo.rename(columns={
         col_nome_efetivo: "Nome",
         col_matricula: "Matrícula GM"
     }, inplace=True)
 
-    # Limpa campos principais
     ranking["Nome"] = ranking["Nome"].astype(str).str.strip()
     efetivo["Nome"] = efetivo["Nome"].astype(str).str.strip()
     efetivo["Matrícula GM"] = efetivo["Matrícula GM"].astype(str).apply(normalizar_matricula)
@@ -382,16 +364,11 @@ def carregar_bases():
     print(f"Efetivo: {len(efetivo)} registros")
     print("Colunas ranking padronizadas:", list(ranking.columns))
     print("Colunas efetivo padronizadas:", list(efetivo.columns))
+    print("Última atualização da base:", obter_ultima_atualizacao_base())
     print("==============================================")
 
 
 def garantir_bases_carregadas():
-    """
-    No Render, quando a aplicação roda com gunicorn app:app,
-    o bloco if __name__ == '__main__' não é executado.
-    Por isso esta função garante que as bases sejam carregadas
-    antes de qualquer consulta.
-    """
     global ranking, efetivo
 
     if ranking is None or efetivo is None:
@@ -410,22 +387,20 @@ def home():
 
 @app.route("/health")
 def health():
-    """
-    Rota simples para testar se a aplicação está online no Render.
-    """
     return jsonify({
         "status": "online",
         "base_dir": str(BASE_DIR),
         "data_dir": str(DATA_DIR),
         "ranking_existe": ARQUIVO_RANKING.exists(),
-        "efetivo_existe": ARQUIVO_EFETIVO.exists()
+        "efetivo_existe": ARQUIVO_EFETIVO.exists(),
+        "ultima_atualizacao_base": obter_ultima_atualizacao_base()
     })
 
 
 @app.route("/recarregar-bases")
 def recarregar_bases():
     """
-    Rota simples para recarregar os CSVs sem reiniciar o serviço.
+    Recarrega os CSVs sem reiniciar o serviço.
     Atenção: em produção, o ideal é proteger esta rota com senha/login.
     """
     try:
@@ -435,7 +410,8 @@ def recarregar_bases():
             "status": "ok",
             "mensagem": "Bases recarregadas com sucesso.",
             "ranking": len(ranking),
-            "efetivo": len(efetivo)
+            "efetivo": len(efetivo),
+            "ultima_atualizacao_base": obter_ultima_atualizacao_base()
         })
 
     except Exception as erro:
@@ -486,7 +462,8 @@ def consultar():
             "notificacoes": str(linha.get("Notificações", "")),
             "fiscalizacoes": str(linha.get("Fiscalizações", "")),
             "mes": formatar_mes_referencia(linha.get("Mês Referência", "")),
-            "matricula": matricula
+            "matricula": matricula,
+            "atualizacao_base": obter_ultima_atualizacao_base()
         })
 
     except Exception as erro:
@@ -500,10 +477,10 @@ def consultar():
 # ============================================================
 # EXECUÇÃO LOCAL
 # ============================================================
-# No Render, normalmente o app será iniciado com:
+# No Render, use:
 # gunicorn app:app
 #
-# Este bloco abaixo serve para rodar localmente com:
+# Localmente, use:
 # python app.py
 
 if __name__ == "__main__":
