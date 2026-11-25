@@ -11,7 +11,6 @@
         --roxo-escuro: #34108F;
         --texto: #120B2A;
         --cinza: #667085;
-        --fundo: #F6F7FF;
         --borda: #D9DDEE;
         --ok: #087F5B;
         --ok-bg: #E9FFF2;
@@ -19,7 +18,6 @@
         --erro-bg: #FFF1F0;
         --alerta: #B7791F;
         --alerta-bg: #FFF7E6;
-        --branco: #FFFFFF;
       }
 
       * {
@@ -41,7 +39,7 @@
       }
 
       .wrap {
-        width: min(920px, calc(100% - 32px));
+        width: min(940px, calc(100% - 32px));
         margin: 0 auto;
       }
 
@@ -62,7 +60,7 @@
       .subtitle {
         margin: 0;
         color: var(--cinza);
-        max-width: 760px;
+        max-width: 780px;
         line-height: 1.55;
       }
 
@@ -257,7 +255,7 @@
 
       .row {
         display: grid;
-        grid-template-columns: 190px 1fr;
+        grid-template-columns: 210px 1fr;
         gap: 12px;
         padding: 12px 0;
         border-bottom: 1px solid #EEF0F6;
@@ -404,6 +402,11 @@
                   <b>Matrícula GM</b>
                   <span id="resMatricula">-</span>
                 </div>
+
+                <div class="row">
+                  <b>Base atualizada em</b>
+                  <span id="resAtualizacaoBase">-</span>
+                </div>
               </div>
             </div>
           </div>
@@ -483,6 +486,7 @@
           document.getElementById("resFiscalizacoes").textContent = dados.fiscalizacoes || "-";
           document.getElementById("resMes").textContent = dados.mes || "-";
           document.getElementById("resMatricula").textContent = dados.matricula || matricula;
+          document.getElementById("resAtualizacaoBase").textContent = dados.atualizacao_base || "-";
 
           setStatus("Resultado encontrado.", "ok");
           mostrarResultado();
@@ -491,7 +495,7 @@
           console.error("Erro na consulta:", erro);
 
           setStatus(
-            "Erro ao consultar o ranking. Verifique se o servidor Flask está rodando.",
+            "Erro ao consultar o ranking. Verifique se o servidor está rodando.",
             "err"
           );
 
@@ -508,6 +512,7 @@
         document.getElementById("resFiscalizacoes").textContent = "-";
         document.getElementById("resMes").textContent = "-";
         document.getElementById("resMatricula").textContent = "-";
+        document.getElementById("resAtualizacaoBase").textContent = "-";
 
         limparStatus();
         esconderResultado();
